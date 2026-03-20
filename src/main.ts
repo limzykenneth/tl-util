@@ -1,6 +1,6 @@
 import { createIterator } from "./symbol-iterator.js";
 
-class TL {
+export class TL {
   static translations: Record<string, Record<string, TL>> = {};
 
   strings: TemplateStringsArray;
@@ -27,7 +27,7 @@ class TL {
   }
 
   static addTranslation(lang: string, origin: TL, target: TL) {
-    const original = TL.translations[origin.hash()];
+    const original = TL.translations[origin?.hash()] || null;
     if (original) {
       original[lang] = target;
       TL.translations[target.hash()] = original;
@@ -37,6 +37,8 @@ class TL {
       };
     }
   }
+
+  static createIterator = createIterator;
 
   toString(lang?: string) {
     let tlObject: TL;
@@ -72,6 +74,12 @@ class TL {
   }
 
   /**
+   * Return an iterator that has length equal to the number of values in this
+   * TL string
+   */
+  getIterator() {}
+
+  /**
    * Return a string representation of the object that is the same across any
    * template values applied.
    */
@@ -96,7 +104,7 @@ if (import.meta.vitest) {
     const placeholder2 = TL.tl`私の名前は${s1}です。番号は${s2}です。`;
     const placeholder3 = TL.tl`El número es ${s2}. Mi nombre es ${s1}.`;
 
-    TL.addTranslation("en", placeholder1, placeholder1);
+    TL.addTranslation("en", null, placeholder1);
     TL.addTranslation("jp", placeholder1, placeholder2);
     TL.addTranslation("es", placeholder1, placeholder3);
 
@@ -196,5 +204,23 @@ if (import.meta.vitest) {
         "Spanish serialize to Japanese"
       );
     });
+  });
+
+  suite("Native compatibility", () => {
+    it("should work with primitive type coersion", () => {
+      assert.equal(
+        myString + "",
+        "My name is K. The number is 42.",
+        "English coerce into English"
+      );
+    });
+    it("should work with other template literals", () => {
+      assert.equal(
+        `${myString}`,
+        "My name is K. The number is 42.",
+        "English interpolates into English"
+      );
+    });
+    it.todo("should work with translation template literals");
   });
 }
