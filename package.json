@@ -1,17 +1,26 @@
 {
   "name": "tl-util",
   "version": "0.0.0",
-  "type": "module",
   "description": "",
-  "main": "main.js",
-  "scripts": {
-    "test": "vitest"
-  },
+  "license": "MIT",
   "author": "",
-  "license": "ISC",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.mjs"
+  },
+  "scripts": {
+    "test": "vp test",
+    "prepare": "vp config"
+  },
   "devDependencies": {
-    "oxfmt": "^0.41.0",
-    "oxlint": "^1.56.0",
-    "vitest": "^4.1.0"
-  }
+    "@typescript/native-preview": "^7.0.0-dev.20260320.1",
+    "vite-plus": "latest",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
+  },
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@latest",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
+  },
+  "packageManager": "npm@11.12.0"
 }

@@ -1,11 +1,10 @@
 {
-	"compilerOptions": {
-		"lib": ["ESNext", "DOM"],
-		"target": "ESNext",
-		"moduleResolution": "nodenext",
-		"module": "NodeNext",
-		"types": [
-      "vitest/importMeta"
-    ]
-	}
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "target": "ESNext",
+    "moduleResolution": "nodenext",
+    "module": "NodeNext",
+    "types": ["vitest/importMeta"],
+    "strictNullChecks": false
+  }
 }
