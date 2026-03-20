@@ -11,7 +11,9 @@ export default defineConfig({
   },
   lint: {
     rules: {
-      "typescript/restrict-template-expressions": "off"
+      "typescript/restrict-template-expressions": {
+        allowAny: true
+      }
     },
     env: {
       builtin: true

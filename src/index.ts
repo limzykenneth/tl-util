@@ -1,16 +1,23 @@
 import { createIterator } from "./symbol-iterator.js";
 
 export class TL {
+  /**
+   * Data structure to internally keep track of registered strings and
+   * translations.
+   *
+   * @private
+   */
   static translations: Record<string, Record<string, TL>> = {};
 
-  strings: TemplateStringsArray;
-  values: any[];
-
-  constructor(strings: TemplateStringsArray, values: any[]) {
-    this.strings = strings;
-    this.values = values;
-  }
-
+  /**
+   * Tagged template literal utility function. This should be used with
+   * tagged templates to create a new TL object. It essentially behaves as a
+   * factory function for the TL object.
+   *
+   * @param strings
+   * @param values
+   * @returns TL
+   */
   static tl(strings: TemplateStringsArray, ...values: any[]) {
     const hash = strings.join("---");
     const original = TL.translations[hash];
@@ -26,6 +33,14 @@ export class TL {
     return new TL(strings, values);
   }
 
+  /**
+   * Add translation to the TL class that can later be used to serialize a
+   * translation string.
+   *
+   * @param lang
+   * @param origin
+   * @param target
+   */
   static addTranslation(lang: string, origin: TL, target: TL) {
     const original = TL.translations[origin?.hash()] || null;
     if (original) {
@@ -38,8 +53,37 @@ export class TL {
     }
   }
 
+  /**
+   * Creates an object that implements Iterable. The object can be expanded out
+   * into individual Symbol object with description being numerical key of
+   * current index of generation.
+   *
+   * @param number
+   * @returns Iterable
+   */
   static createIterator = createIterator;
 
+  strings: TemplateStringsArray;
+  values: any[];
+
+  constructor(strings: TemplateStringsArray, values: any[]) {
+    this.strings = strings;
+    this.values = values;
+  }
+
+  /**
+   * Serializes the TL object into a string with the previously set values.
+   *
+   * If a language code is passed in with the `lang` parameter, it will attempt
+   * to find the relevant translation and if not found, return the orignal
+   * string untranslated.
+   *
+   * If the `lang` parameter is not provided, return the original string
+   * untranslated.
+   *
+   * @param lang
+   * @returns string
+   */
   toString(lang?: string) {
     let tlObject: TL;
     if (lang) {
@@ -77,7 +121,9 @@ export class TL {
    * Return an iterator that has length equal to the number of values in this
    * TL string
    */
-  getIterator() {}
+  getIterator() {
+    return createIterator(this.values.length);
+  }
 
   /**
    * Return a string representation of the object that is the same across any
@@ -213,6 +259,16 @@ if (import.meta.vitest) {
         "My name is K. The number is 42.",
         "English coerce into English"
       );
+      assert.equal(
+        myString2 + "",
+        "私の名前はLです。番号は100です。",
+        "Japanses coerce into Japansese"
+      );
+      assert.equal(
+        myString3 + "",
+        "El número es 42. Mi nombre es K.",
+        "Spanish coerce into Spanish"
+      );
     });
     it("should work with other template literals", () => {
       assert.equal(
@@ -220,7 +276,24 @@ if (import.meta.vitest) {
         "My name is K. The number is 42.",
         "English interpolates into English"
       );
+      assert.equal(
+        `${myString2}`,
+        "私の名前はLです。番号は100です。",
+        "Japanses coerce into Japansese"
+      );
+      assert.equal(
+        `${myString3}`,
+        "El número es 42. Mi nombre es K.",
+        "Spanish coerce into Spanish"
+      );
     });
-    it.todo("should work with translation template literals");
+    it.todo("should work with translation template literals", () => {
+      const newString = TL.tl`My name is ${n}. The number is ${myString3}.`;
+      assert.equal(
+        newString.toString("jp"),
+        "私の名前はKです。番号は私の名前はLです。番号は100です。です。",
+        "Spanish embeded in English translated into Japanese"
+      );
+    });
   });
 }
