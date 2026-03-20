@@ -1,0 +1,26 @@
+{
+	"tab_size": 2,
+	"hard_tabs": false,
+	"languages": {
+		"JavaScript": {
+			"language_servers": ["!eslint", "!typescript-language-server", "..."],
+			"formatter": {
+				"external": {
+					"command": "npx",
+					"arguments": ["oxfmt", "--stdin-filepath={buffer_path}"]
+				}
+			},
+			"format_on_save": "on"
+		},
+		"TypeScript": {
+			"language_servers": ["!eslint", "!typescript-language-server", "..."],
+			"formatter": {
+				"external": {
+					"command": "npx",
+					"arguments": ["oxfmt", "--stdin-filepath={buffer_path}"]
+				}
+			},
+			"format_on_save": "on"
+		}
+	}
+}
