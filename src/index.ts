@@ -18,7 +18,7 @@ export class TL {
    * @param values
    * @returns TL
    */
-  static tl(strings: TemplateStringsArray, ...values: any[]) {
+  static tl(strings: TemplateStringsArray | string[], ...values: any[]) {
     const hash = strings.join("---");
     const original = TL.translations[hash];
     if (original) {
@@ -42,6 +42,7 @@ export class TL {
    * @param target
    */
   static addTranslation(lang: string, origin: TL, target: TL) {
+    // Associate by TL object
     const original = TL.translations[origin?.hash()] || null;
     if (original) {
       original[lang] = target;
@@ -50,6 +51,31 @@ export class TL {
       TL.translations[target.hash()] = {
         [lang]: target
       };
+    }
+  }
+
+  /**
+   * Bulk add translations.
+   */
+  static addTranslations(lang: string, translations: Record<string, any>) {
+    const regex = /(\$\{.+?\})/gm;
+    console.log(lang);
+    console.log(translations);
+
+    for (const [key, val] of Object.entries(translations)) {
+      const arr = val.split(regex);
+      const arg1 = [],
+        arg2 = [];
+      for (let i = 0; i < arr.length; i++) {
+        if (i % 2 === 0) {
+          arg1.push(arr[i]);
+        } else {
+          arg2.push(Symbol.for(Math.floor(i / 2).toString()));
+        }
+      }
+      // NEXT: we can't associate string with string from file
+      // We will probably need to go traditional and associate with key
+      console.log(TL.tl(arg1, ...arg2));
     }
   }
 
@@ -63,11 +89,11 @@ export class TL {
    */
   static createIterator = createIterator;
 
-  strings: TemplateStringsArray;
+  strings: string[];
   values: any[];
 
-  constructor(strings: TemplateStringsArray, values: any[]) {
-    this.strings = strings;
+  constructor(strings: TemplateStringsArray | string[], values: any[]) {
+    this.strings = Array.from(strings);
     this.values = values;
   }
 
@@ -92,10 +118,14 @@ export class TL {
     }
     if (!tlObject) {
       const original = TL.translations[this.hash()];
-      const template = Object.values(original).find((val) => {
-        return this.hash() === val.hash();
-      });
-      tlObject = template;
+      if (original) {
+        const template = Object.values(original).find((val) => {
+          return this.hash() === val.hash();
+        });
+        tlObject = template;
+      } else {
+        tlObject = this;
+      }
     }
 
     // Order of `this.values` should be kept while how it is applied changed
@@ -176,6 +206,10 @@ if (import.meta.vitest) {
         "El número es 42. Mi nombre es K.",
         "Spanish string self serialize without language tag"
       );
+    });
+    it("should serialize into original string when no translation exist", () => {
+      const str = TL.tl`Hello`;
+      assert.equal(str.toString(), "Hello");
     });
   });
 
@@ -294,6 +328,16 @@ if (import.meta.vitest) {
         "私の名前はKです。番号は私の名前はLです。番号は100です。です。",
         "Spanish embeded in English translated into Japanese"
       );
+    });
+  });
+
+  suite("Add translations", async () => {
+    const { default: enData } = await import("./en.json", {
+      with: { type: "json" }
+    });
+
+    it("should import direct strings from the file", () => {
+      TL.addTranslations("en", enData);
     });
   });
 }

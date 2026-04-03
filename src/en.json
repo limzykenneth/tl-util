@@ -1,0 +1,5 @@
+{
+  "greeting": "Hello World!",
+  "greeting-name": "Hello ${name}",
+  "greeting-compound": "${greeting} Today's date is ${date}"
+}
