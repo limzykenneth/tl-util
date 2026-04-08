@@ -5,9 +5,13 @@ export class TL {
    * Data structure to internally keep track of registered strings and
    * translations.
    *
+   * First level key is the string identifier and second level is language
+   * code, final value is `TL` object.
+   *
    * @private
    */
   static translations: Record<string, Record<string, TL>> = {};
+  static bucket: { lang: string; label: string; content: TL }[] = [];
 
   /**
    * Tagged template literal utility function. This should be used with
@@ -20,13 +24,12 @@ export class TL {
    */
   static tl(strings: TemplateStringsArray | string[], ...values: any[]) {
     const hash = strings.join("---");
-    const original = TL.translations[hash];
-    if (original) {
-      const template = Object.values(original).find((val) => {
-        return hash === val.hash();
-      });
+    const template = TL.bucket.find((item) => {
+      return item.content.hash() === hash;
+    });
+    if (template) {
       values = values.reduce((acc, value, i) => {
-        acc[parseInt(template.values[i].description)] = value;
+        acc[parseInt(template.content.values[i].description)] = value;
         return acc;
       }, []);
     }
@@ -41,16 +44,26 @@ export class TL {
    * @param origin
    * @param target
    */
-  static addTranslation(lang: string, origin: TL, target: TL) {
-    // Associate by TL object
-    const original = TL.translations[origin?.hash()] || null;
-    if (original) {
-      original[lang] = target;
-      TL.translations[target.hash()] = original;
+  static addTranslation(lang: string, origin: TL | string, target: TL) {
+    // NOTE: need to account for deduping
+    if (origin instanceof TL) {
+      // Associate by TL object
+      // Get string label by origin
+      const { label } = TL.bucket.find((item) => {
+        return item.content.hash() === origin.hash();
+      });
+      TL.bucket.push({
+        lang,
+        label,
+        content: target
+      });
     } else {
-      TL.translations[target.hash()] = {
-        [lang]: target
-      };
+      // Associate by string label
+      TL.bucket.push({
+        lang,
+        label: origin,
+        content: target
+      });
     }
   }
 
@@ -59,8 +72,6 @@ export class TL {
    */
   static addTranslations(lang: string, translations: Record<string, any>) {
     const regex = /(\$\{.+?\})/gm;
-    console.log(lang);
-    console.log(translations);
 
     for (const [key, val] of Object.entries(translations)) {
       const arr = val.split(regex);
@@ -73,9 +84,12 @@ export class TL {
           arg2.push(Symbol.for(Math.floor(i / 2).toString()));
         }
       }
-      // NEXT: we can't associate string with string from file
-      // We will probably need to go traditional and associate with key
-      console.log(TL.tl(arg1, ...arg2));
+
+      TL.bucket.push({
+        lang,
+        label: key,
+        content: TL.tl(arg1, ...arg2)
+      });
     }
   }
 
@@ -113,16 +127,27 @@ export class TL {
   toString(lang?: string) {
     let tlObject: TL;
     if (lang) {
-      const translatedString = TL.translations[this.hash()]?.[lang];
-      if (translatedString) tlObject = translatedString;
+      // const translatedString = TL.translations[this.hash()]?.[lang];
+      const item = TL.bucket.find((item) => {
+        return item.content.hash() === this.hash();
+      });
+      if (item) {
+        const translatedString = TL.bucket.find((i) => {
+          return i.label === item.label && i.lang === lang;
+        });
+        if (translatedString) tlObject = translatedString.content;
+      }
     }
     if (!tlObject) {
-      const original = TL.translations[this.hash()];
-      if (original) {
-        const template = Object.values(original).find((val) => {
-          return this.hash() === val.hash();
-        });
-        tlObject = template;
+      // const original = TL.translations[this.hash()];
+      const template = TL.bucket.find((item) => {
+        return item.content.hash() === this.hash();
+      });
+      if (template) {
+        // const template = Object.values(original).find((val) => {
+        //   return this.hash() === val.hash();
+        // });
+        tlObject = template.content;
       } else {
         tlObject = this;
       }
@@ -180,7 +205,7 @@ if (import.meta.vitest) {
     const placeholder2 = TL.tl`私の名前は${s1}です。番号は${s2}です。`;
     const placeholder3 = TL.tl`El número es ${s2}. Mi nombre es ${s1}.`;
 
-    TL.addTranslation("en", null, placeholder1);
+    TL.addTranslation("en", "test", placeholder1);
     TL.addTranslation("jp", placeholder1, placeholder2);
     TL.addTranslation("es", placeholder1, placeholder3);
 
@@ -335,9 +360,27 @@ if (import.meta.vitest) {
     const { default: enData } = await import("./en.json", {
       with: { type: "json" }
     });
+    const { default: zhData } = await import("./zh.json", {
+      with: { type: "json" }
+    });
 
     it("should import direct strings from the file", () => {
       TL.addTranslations("en", enData);
+      TL.addTranslations("zh", zhData);
+
+      const str = TL.tl`Hello World!`;
+      assert.equal(str.toString(), "Hello World!");
+      assert.equal(str.toString("zh"), "你好世界！");
+
+      const name = "Alex";
+      const str2 = TL.tl`Hello ${name}`;
+      assert.equal(str2.toString(), "Hello Alex");
+      assert.equal(str2.toString("zh"), "你好，Alex");
+
+      const date = "08/04";
+      const str3 = TL.tl`${str}今天的日期是${date}`;
+      assert.equal(str3.toString(), "Hello World!今天的日期是08/04");
+      assert.equal(str3.toString("en"), "Hello World! Today's date is 08/04");
     });
   });
 }
