@@ -10,7 +10,6 @@ export class TL {
    *
    * @private
    */
-  static translations: Record<string, Record<string, TL>> = {};
   static bucket: { lang: string; label: string; content: TL }[] = [];
 
   /**
@@ -127,7 +126,6 @@ export class TL {
   toString(lang?: string) {
     let tlObject: TL;
     if (lang) {
-      // const translatedString = TL.translations[this.hash()]?.[lang];
       const item = TL.bucket.find((item) => {
         return item.content.hash() === this.hash();
       });
@@ -139,14 +137,10 @@ export class TL {
       }
     }
     if (!tlObject) {
-      // const original = TL.translations[this.hash()];
       const template = TL.bucket.find((item) => {
         return item.content.hash() === this.hash();
       });
       if (template) {
-        // const template = Object.values(original).find((val) => {
-        //   return this.hash() === val.hash();
-        // });
         tlObject = template.content;
       } else {
         tlObject = this;

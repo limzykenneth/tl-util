@@ -11,7 +11,8 @@
   },
   "scripts": {
     "test": "vp test",
-    "prepare": "vp config"
+    "prepare": "vp config",
+    "build": "vp pack"
   },
   "devDependencies": {
     "@typescript/native-preview": "^7.0.0-dev.20260320.1",
