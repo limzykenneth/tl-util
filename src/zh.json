@@ -1,5 +1,6 @@
 {
   "greeting": "你好世界！",
   "greeting-name": "你好，${name}",
-  "greeting-compound": "${greeting}今天的日期是${date}"
+  "greeting-compound": "${greeting}今天的日期是${date}",
+  "parameter": "${position}参数应为${expected-type}，但在 ${function-name} 中接收到的是${actual-type}。"
 }

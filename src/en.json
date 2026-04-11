@@ -1,5 +1,6 @@
 {
   "greeting": "Hello World!",
   "greeting-name": "Hello ${name}",
-  "greeting-compound": "${greeting} Today's date is ${date}"
+  "greeting-compound": "${greeting} Today's date is ${date}",
+  "parameter": "Expected ${expected-type} at the ${position} parameter, but received ${actual-type} in ${function-name}."
 }
