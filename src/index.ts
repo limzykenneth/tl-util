@@ -5,7 +5,7 @@ interface BucketItem {
   placeholders: string[];
 }
 
-class TL {
+export class TL {
   /**
    * Data structure to internally keep track of registered strings and
    * translations.
@@ -79,6 +79,9 @@ class TL {
    * @returns string
    */
   toString(lang?: string) {
+    // TODO: Take into account mismatch number of placeholder, target language
+    // can have fewer placeholder
+
     // Identify what the language of `this` is then well map the values array
     const item = TL.bucket.find((item) => {
       return item.strings.join("---") === this.strings.join("---");
@@ -90,7 +93,11 @@ class TL {
       for (let i = 0; i < this.strings.length; i++) {
         results += this.strings[i];
 
-        if (this.values[i]) results += this.values[i].toString();
+        if (this.values[i])
+          results +=
+            this.values[i] instanceof TL
+              ? this.values[i].toString(lang)
+              : this.values[i];
       }
       return results;
     }
@@ -114,7 +121,11 @@ class TL {
     for (let i = 0; i < targetLangItem.strings.length; i++) {
       results += targetLangItem.strings[i];
 
-      if (values[i]) results += values[i].toString(targetLangItem.lang);
+      if (values[i])
+        results +=
+          values[i] instanceof TL
+            ? values[i].toString(targetLangItem.lang)
+            : values[i];
     }
     return results;
   }
