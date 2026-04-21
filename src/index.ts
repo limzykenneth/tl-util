@@ -58,11 +58,9 @@ export class TL {
         });
       } else {
         for (const [patternStr, str] of Object.entries(val)) {
-          const placeholder = patternStr.split("_")[0];
           const match = patternStr.split("_")[1];
           const matchRegex = /\[(.+?)\]/;
           const pattern = matchRegex.exec(match)[1];
-          console.log(placeholder, pattern, str);
 
           const arr = str.split(regex);
           const strings = [];
