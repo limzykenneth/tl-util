@@ -1,8 +1,7 @@
 interface BucketItem {
   lang: string;
   label: string;
-  strings: string[];
-  placeholders: string[];
+  pattern: Pattern;
 }
 
 export class TL {
@@ -16,30 +15,78 @@ export class TL {
    */
   static bucket: BucketItem[] = [];
 
+  static patterns = new Map([
+    ["zero", (v: string) => parseFloat(v) === 0],
+    ["one", (v: string) => parseFloat(v) === 1],
+    ["*", () => true]
+  ]);
+
   /**
    * Bulk add translations.
    */
-  static addTranslations(lang: string, translations: Record<string, any>) {
+  static addTranslations(
+    lang: string,
+    translations: Record<string, string | Record<string, string>>
+  ) {
     const regex = /\$\{(.+?)\}/gm;
 
     for (const [key, val] of Object.entries(translations)) {
-      const arr = val.split(regex);
-      const strings = [];
-      const placeholders = [];
+      const patternObj = new Map<
+        (v?: string) => boolean,
+        {
+          strings: string[];
+          placeholders: string[];
+        }
+      >();
+      if (typeof val === "string") {
+        // Simple string matching
+        const arr = val.split(regex);
+        const strings = [];
+        const placeholders = [];
 
-      for (let i = 0; i < arr.length; i++) {
-        if (i % 2 === 0) {
-          strings.push(arr[i]);
-        } else {
-          placeholders.push(arr[i]);
+        for (let i = 0; i < arr.length; i++) {
+          if (i % 2 === 0) {
+            strings.push(arr[i]);
+          } else {
+            placeholders.push(arr[i]);
+          }
+        }
+
+        patternObj.set(TL.patterns.get("*"), {
+          strings,
+          placeholders
+        });
+      } else {
+        for (const [patternStr, str] of Object.entries(val)) {
+          const placeholder = patternStr.split("_")[0];
+          const match = patternStr.split("_")[1];
+          const matchRegex = /\[(.+?)\]/;
+          const pattern = matchRegex.exec(match)[1];
+          console.log(placeholder, pattern, str);
+
+          const arr = str.split(regex);
+          const strings = [];
+          const placeholders = [];
+
+          for (let i = 0; i < arr.length; i++) {
+            if (i % 2 === 0) {
+              strings.push(arr[i]);
+            } else {
+              placeholders.push(arr[i]);
+            }
+          }
+
+          patternObj.set(TL.patterns.get(pattern) || (() => true), {
+            strings,
+            placeholders
+          });
         }
       }
 
       TL.bucket.push({
         lang,
         label: key,
-        strings,
-        placeholders
+        pattern: new Pattern(patternObj)
       });
     }
   }
@@ -84,7 +131,7 @@ export class TL {
 
     // Identify what the language of `this` is then well map the values array
     const item = TL.bucket.find((item) => {
-      return item.strings.join("---") === this.strings.join("---");
+      return item.pattern.isMatch(this.strings);
     });
 
     if (!item) {
@@ -112,14 +159,22 @@ export class TL {
 
     // Re-map position of `this.values`
     const values: any[] = [];
-    item.placeholders.forEach((placeholder) => {
-      const index = targetLangItem.placeholders.indexOf(placeholder);
+    const { strings, placeholders } = targetLangItem.pattern.match(
+      this.values[0]
+    );
+
+    const { placeholders: itemPlaceholders } = item.pattern.match(
+      this.values[0]
+    );
+
+    itemPlaceholders.forEach((placeholder) => {
+      const index = placeholders.indexOf(placeholder);
       values.push(this.values[index]);
     });
 
     let results = "";
-    for (let i = 0; i < targetLangItem.strings.length; i++) {
-      results += targetLangItem.strings[i];
+    for (let i = 0; i < strings.length; i++) {
+      results += strings[i];
 
       if (values[i])
         results +=
@@ -128,6 +183,61 @@ export class TL {
             : values[i];
     }
     return results;
+  }
+
+  // MAYBE: used to set the values manually, for use when using template with less placeholder
+  setValues() {}
+}
+
+class Pattern {
+  /**
+   * Key of the map is the pattern matching function, value is the evaluated string.
+   */
+  patterns: Map<
+    (v?: string) => boolean,
+    {
+      strings: string[];
+      placeholders: string[];
+    }
+  >;
+
+  constructor(
+    patterns: Map<
+      (v?: string) => boolean,
+      {
+        strings: string[];
+        placeholders: string[];
+      }
+    >
+  ) {
+    this.patterns = patterns;
+  }
+
+  /**
+   * Perform pattern matching using the provided value.
+   *
+   * @param v
+   * @returns
+   */
+  match(v: string) {
+    for (const [key, value] of this.patterns.entries()) {
+      if (key(v)) {
+        return value;
+      }
+    }
+  }
+
+  /**
+   * Reserve lookup to determine if current pattern matches strings.
+   *
+   * @param input
+   * @returns
+   */
+  isMatch(input: string[]) {
+    for (const { strings } of this.patterns.values()) {
+      if (input.join("---") === strings.join("---")) return true;
+    }
+    return false;
   }
 }
 
@@ -139,14 +249,25 @@ if (import.meta.vitest) {
       basic: "This has no placeholder",
       greeting: "Hello ${name}.",
       debug: "Expected ${expected-type} at the ${position} parameter",
-      first: "first"
+      first: "first",
+      mismatch: {
+        // NOTE: square bracket for symbol with specific meaning,
+        // round bracket for literal string value
+        "${amount}_[zero]": "There are no apples",
+        "${amount}_[one]": "There should be ${amount} apple",
+        "${amount}_[*]": "There should be ${amount} apples"
+      }
     });
 
     TL.addTranslations("zh", {
       basic: "此处没有占位符",
       greeting: "你好 ${name}",
       debug: "${position}参数应为${expected-type}",
-      first: "第一个"
+      first: "第一个",
+      mismatch: {
+        "${amount}_[zero]": "没有苹果。",
+        "${amount}_[*]": "应该有${amount}个苹果。"
+      }
     });
   });
 
@@ -297,5 +418,33 @@ if (import.meta.vitest) {
         "Chinese string with ordinal first being TL object"
       );
     });
+  });
+
+  suite("Pattern matching", () => {
+    it("should match any string to the key as long as it has required placeholder", () => {
+      let amount = 1;
+      const string1 = TL.tl`There should be ${amount} apple`;
+      assert.equal(string1.toString("en"), "There should be 1 apple");
+
+      amount = 2;
+      const string2 = TL.tl`There should be ${amount} apple`;
+      assert.equal(string2.toString("en"), "There should be 2 apples");
+    });
+    it("should serialize into own language string based on set pattern", () => {
+      const amount = 1;
+      const string1 = TL.tl`There should be ${amount} apples`;
+      assert.equal(string1.toString(), "There should be 1 apple");
+    });
+    it("should translate into other language string based on pattern", () => {
+      let amount = 1;
+      const string1 = TL.tl`There should be ${amount} apples`;
+      assert.equal(string1.toString("zh"), "应该有1个苹果。");
+
+      amount = 2;
+      const string2 = TL.tl`应该有${amount}个苹果。`;
+      assert.equal(string2.toString("en"), "There should be 2 apples");
+    });
+    it("should match using special symbol");
+    it("should match using string literal");
   });
 }
