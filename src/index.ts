@@ -1,5 +1,5 @@
 interface BucketItem {
-  lang: string;
+  lang: string[];
   label: string;
   pattern: Pattern;
 }
@@ -25,7 +25,7 @@ export class TL {
    * Bulk add translations.
    */
   static addTranslations(
-    lang: string,
+    lang: string | string[],
     translations: Record<string, string | Record<string, string>>
   ) {
     const regex = /\$\{(.+?)\}/gm;
@@ -83,7 +83,7 @@ export class TL {
       }
 
       TL.bucket.push({
-        lang,
+        lang: Intl.getCanonicalLocales(Array.isArray(lang) ? lang : [lang]),
         label: key,
         pattern: new Pattern(patternObj)
       });
@@ -124,10 +124,13 @@ export class TL {
    * @param lang
    * @returns string
    */
-  toString(lang?: string) {
-    // TODO: Some way to resolve to closest registered language code or default if unsure
+  toString(lang?: string | string[]) {
+    if (lang) {
+      lang = Intl.getCanonicalLocales(Array.isArray(lang) ? lang : [lang]);
+    }
 
-    // Identify what the language of `this` is then well map the values array
+    // Identify what the language of `this` is then we'll map the values array
+    // Get translation entry matching current object in bucket
     const item = TL.bucket.find((item) => {
       return item.pattern.isMatch(this.strings);
     });
@@ -147,13 +150,32 @@ export class TL {
       return results;
     }
 
-    const targetLangItem =
-      TL.bucket.find((targetItem) => {
+    // Get translation entry matching target language and current object in bucket.
+    // If entry is not found, use current entry as is.
+    let targetLangItem: BucketItem;
+    if (lang) {
+      // Get entry by language based on lang array order (ie. user preference)
+      targetLangItem = (lang as string[]).reduce<BucketItem>((acc, l) => {
+        if (!acc) {
+          acc = TL.bucket.find((targetItem) => {
+            return (
+              targetItem.label === item.label && targetItem.lang.includes(l)
+            );
+          });
+        }
+        return acc;
+      }, null);
+    } else {
+      targetLangItem = TL.bucket.find((targetItem) => {
         return (
           targetItem.label === item.label &&
-          targetItem.lang === (lang ?? item.lang)
+          targetItem.lang.filter((value) => item.lang.includes(value)).length >
+            0
         );
-      }) ?? item;
+      });
+    }
+
+    if (!targetLangItem) targetLangItem = item;
 
     // Re-map position of `this.values`
     const values: any[] = [];
