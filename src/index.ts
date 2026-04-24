@@ -39,7 +39,7 @@ export class TL {
         }
       >();
       if (typeof val === "string") {
-        // Simple string matching
+        // Simple string matching, set as default pattern match
         const arr = val.split(regex);
         const strings = [];
         const placeholders = [];
@@ -57,6 +57,7 @@ export class TL {
           placeholders
         });
       } else {
+        // More complex matching (eg. plurality)
         for (const [patternStr, str] of Object.entries(val)) {
           const match = patternStr.split("_")[1];
           const matchRegex = /\[(.+?)\]/;
@@ -124,8 +125,7 @@ export class TL {
    * @returns string
    */
   toString(lang?: string) {
-    // TODO: Take into account mismatch number of placeholder, target language
-    // can have fewer placeholder
+    // TODO: Some way to resolve to closest registered language code or default if unsure
 
     // Identify what the language of `this` is then well map the values array
     const item = TL.bucket.find((item) => {
@@ -428,11 +428,13 @@ if (import.meta.vitest) {
       const string2 = TL.tl`There should be ${amount} apple`;
       assert.equal(string2.toString("en"), "There should be 2 apples");
     });
+
     it("should serialize into own language string based on set pattern", () => {
       const amount = 1;
       const string1 = TL.tl`There should be ${amount} apples`;
       assert.equal(string1.toString(), "There should be 1 apple");
     });
+
     it("should translate into other language string based on pattern", () => {
       let amount = 1;
       const string1 = TL.tl`There should be ${amount} apples`;
@@ -442,7 +444,7 @@ if (import.meta.vitest) {
       const string2 = TL.tl`应该有${amount}个苹果。`;
       assert.equal(string2.toString("en"), "There should be 2 apples");
     });
-    it("should match using special symbol");
+
     it("should match using string literal");
   });
 }
