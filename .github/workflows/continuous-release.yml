@@ -1,0 +1,24 @@
+name: Publish Any Commit
+on: [push]
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "24"
+          cache: true
+
+      - run: vp install
+      - run: vp check
+      - run: vp test
+      - run: vp pack
+
+      - run: vpx pkg-pr-new publish
