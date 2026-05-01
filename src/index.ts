@@ -178,7 +178,6 @@ export class TL {
     if (!targetLangItem) targetLangItem = item;
 
     // Re-map position of `this.values`
-    const values: any[] = [];
     const { strings, placeholders } = targetLangItem.pattern.match(
       this.values[0]
     );
@@ -187,21 +186,21 @@ export class TL {
       this.values[0]
     );
 
-    itemPlaceholders.forEach((placeholder) => {
-      const index = placeholders.indexOf(placeholder);
-      values.push(this.values[index]);
-    });
+    // Build values into a keyed object then reference that way
+    const values = this.values.reduce((acc, value, i) => {
+      acc[itemPlaceholders[i]] = value;
+      return acc;
+    }, {});
 
     let results = "";
     for (let i = 0; i < strings.length; i++) {
       results += strings[i];
+      const val = values[placeholders[i]];
 
-      if (values[i])
-        results +=
-          values[i] instanceof TL
-            ? values[i].toString(targetLangItem.lang)
-            : values[i];
+      if (typeof val !== "undefined")
+        results += val instanceof TL ? val.toString(targetLangItem.lang) : val;
     }
+
     return results;
   }
 
@@ -270,13 +269,16 @@ if (import.meta.vitest) {
       greeting: "Hello ${name}.",
       debug: "Expected ${expected-type} at the ${position} parameter",
       first: "first",
+      functionType: "function",
       mismatch: {
         // NOTE: square bracket for symbol with specific meaning,
         // round bracket for literal string value
         "${amount}_[zero]": "There are no apples",
         "${amount}_[one]": "There should be ${amount} apple",
         "${amount}_[*]": "There should be ${amount} apples"
-      }
+      },
+      repeatPlaceolder:
+        '${errorType} "${name}" on line ${line} is being redeclared and conflicts with a p5.js ${errorType}. p5.js reference: ${url}'
     });
 
     TL.addTranslations("zh", {
@@ -284,10 +286,13 @@ if (import.meta.vitest) {
       greeting: "你好 ${name}",
       debug: "${position}参数应为${expected-type}",
       first: "第一个",
+      functionType: "函数",
       mismatch: {
         "${amount}_[zero]": "没有苹果。",
         "${amount}_[*]": "应该有${amount}个苹果。"
-      }
+      },
+      repeatPlaceolder:
+        "第 ${line} 行的${errorType} “${name}” 被重复声明，与 p5.js ${errorType}冲突。p5.js 参考：${url}"
     });
   });
 
@@ -386,6 +391,36 @@ if (import.meta.vitest) {
         myString4.toString("en"),
         "Expected string at the first parameter",
         "Chinese serialize to English"
+      );
+    });
+
+    it("should translate correctly when same variable is used multiple times", () => {
+      const errorType = TL.tl`function`;
+      const name = "fill";
+      const line = 1;
+      const url = "http://example.com";
+      const str1 = TL.tl`${errorType} "${name}" on line ${line} is being redeclared and conflicts with a p5.js ${errorType}. p5.js reference: ${url}`;
+      const str2 = TL.tl`第 ${line} 行的${errorType} “${name}” 被重复声明，与 p5.js ${errorType}冲突。p5.js 参考：${url}`;
+
+      assert.equal(
+        str1.toString("en"),
+        'function "fill" on line 1 is being redeclared and conflicts with a p5.js function. p5.js reference: http://example.com',
+        "English to English"
+      );
+      assert.equal(
+        str2.toString("zh"),
+        "第 1 行的函数 “fill” 被重复声明，与 p5.js 函数冲突。p5.js 参考：http://example.com",
+        "Chinese to Chinese"
+      );
+      assert.equal(
+        str1.toString("zh"),
+        "第 1 行的函数 “fill” 被重复声明，与 p5.js 函数冲突。p5.js 参考：http://example.com",
+        "English to Chinese"
+      );
+      assert.equal(
+        str2.toString("en"),
+        'function "fill" on line 1 is being redeclared and conflicts with a p5.js function. p5.js reference: http://example.com',
+        "Chinese to English"
       );
     });
   });
