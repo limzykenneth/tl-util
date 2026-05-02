@@ -1,6 +1,6 @@
 # TL Util (WIP)
 
-[![pkg.pr.new](/badge/limzykenneth/tl-util)](/~/limzykenneth/tl-util)
+[![pkg.pr.new](https://pkg.pr.new/badge/limzykenneth/tl-util)](https://pkg.pr.new/~/limzykenneth/tl-util)
 
 ## Design goals
 
