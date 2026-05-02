@@ -60,8 +60,10 @@ export class TL {
         // More complex matching (eg. plurality)
         for (const [patternStr, str] of Object.entries(val)) {
           const match = patternStr.split("_")[1];
-          const matchRegex = /\[(.+?)\]/;
-          const pattern = matchRegex.exec(match)[1];
+          const functionMatchRegex = /\[(.+?)\]/;
+          const functionPattern = functionMatchRegex.exec(match)?.[1];
+          const literalMatchRegex = /\((.+?)\)/;
+          const literalPattern = literalMatchRegex.exec(match)?.[1];
 
           const arr = str.split(regex);
           const strings = [];
@@ -75,10 +77,16 @@ export class TL {
             }
           }
 
-          patternObj.set(TL.patterns.get(pattern) || (() => true), {
-            strings,
-            placeholders
-          });
+          patternObj.set(
+            TL.patterns.get(functionPattern) ||
+              (literalPattern
+                ? (value: any) => value.toString() === literalPattern
+                : () => true),
+            {
+              strings,
+              placeholders
+            }
+          );
         }
       }
 
@@ -188,7 +196,9 @@ export class TL {
 
     // Build values into a keyed object then reference that way
     const values = this.values.reduce((acc, value, i) => {
-      acc[itemPlaceholders[i]] = value;
+      if (itemPlaceholders[i]) {
+        acc[itemPlaceholders[i]] = value;
+      }
       return acc;
     }, {});
 
@@ -277,6 +287,12 @@ if (import.meta.vitest) {
         "${amount}_[one]": "There should be ${amount} apple",
         "${amount}_[*]": "There should be ${amount} apples"
       },
+      literalMatch: {
+        "${value}_(0)": "You have no notifications",
+        "${value}_(1)": "You have ${value} notification",
+        "${value}_(12)": "You have a dozen notifications",
+        "${value}_[*]": "You have ${value} notifications"
+      },
       repeatPlaceolder:
         '${errorType} "${name}" on line ${line} is being redeclared and conflicts with a p5.js ${errorType}. p5.js reference: ${url}'
     });
@@ -290,6 +306,11 @@ if (import.meta.vitest) {
       mismatch: {
         "${amount}_[zero]": "没有苹果。",
         "${amount}_[*]": "应该有${amount}个苹果。"
+      },
+      literalMatch: {
+        "${value}_(0)": "您没有收到任何通知",
+        "${value}_(12)": "您有一打通知",
+        "${value}_[*]": "您有 ${value} 条通知"
       },
       repeatPlaceolder:
         "第 ${line} 行的${errorType} “${name}” 被重复声明，与 p5.js ${errorType}冲突。p5.js 参考：${url}"
@@ -486,10 +507,14 @@ if (import.meta.vitest) {
       assert.equal(string2.toString("en"), "There should be 2 apples");
     });
 
-    it("should serialize into own language string based on set pattern", () => {
-      const amount = 1;
+    it.only("should serialize into own language string based on set pattern", () => {
+      let amount = 1;
       const string1 = TL.tl`There should be ${amount} apples`;
       assert.equal(string1.toString(), "There should be 1 apple");
+
+      amount = 0;
+      const string2 = TL.tl`There should be ${amount} apples`;
+      assert.equal(string2.toString(), "There are no apples");
     });
 
     it("should translate into other language string based on pattern", () => {
@@ -502,6 +527,17 @@ if (import.meta.vitest) {
       assert.equal(string2.toString("en"), "There should be 2 apples");
     });
 
-    it("should match using string literal");
+    it("should match with multiple selector");
+
+    it("should match using string literal", () => {
+      const value = 12;
+      const str1 = TL.tl`You have ${value} notifications`;
+      const str2 = TL.tl`您有 ${value} 条通知`;
+
+      assert.equal(str1.toString(), "You have a dozen notifications");
+      assert.equal(str2.toString(), "您有一打通知");
+      assert.equal(str1.toString("zh"), "您有一打通知");
+      assert.equal(str2.toString("en"), "You have a dozen notifications");
+    });
   });
 }
