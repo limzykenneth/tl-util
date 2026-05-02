@@ -1,5 +1,7 @@
 # TL Util (WIP)
 
+[![pkg.pr.new](/badge/limzykenneth/tl-util)](/~/limzykenneth/tl-util)
+
 ## Design goals
 
 ### Problems with existing solutions
