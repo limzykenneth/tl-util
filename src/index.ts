@@ -507,7 +507,7 @@ if (import.meta.vitest) {
       assert.equal(string2.toString("en"), "There should be 2 apples");
     });
 
-    it.only("should serialize into own language string based on set pattern", () => {
+    it("should serialize into own language string based on set pattern", () => {
       let amount = 1;
       const string1 = TL.tl`There should be ${amount} apples`;
       assert.equal(string1.toString(), "There should be 1 apple");
